@@ -164,7 +164,7 @@ input:focus,textarea:focus{border-color:var(--accent);outline:none}
 
 /* abas */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
 nav button{height:var(--nav-h);border:0;background:none;display:grid;place-items:center;align-content:center;gap:3px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;position:relative}
 nav button[aria-current=page]{color:var(--accent)}
 nav button[aria-current=page]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
@@ -205,6 +205,10 @@ select.inp{appearance:auto;font-size:16px;background:var(--surface);min-height:5
 .av-ed .acts .btn{min-height:44px;font-size:16px}
 .av-ed .acts .linkbtn{flex:none;padding-inline:6px}
 .av-obs{font-size:14px;background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.opt{font-weight:400;color:var(--muted)}
+.cli-chips{max-height:236px;overflow-y:auto;padding:2px;border-radius:12px}
+.chip.interno{border-style:dashed}
+.cli-busca{min-height:44px!important;font-size:16px!important}
 .sec{font-family:var(--f-display);font-weight:700;font-size:22px;margin:10px 0 -4px}
 #instalar{padding-top:14px}
 .inst{display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:start;background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r);padding:14px}
@@ -238,6 +242,7 @@ img{max-width:100%}
 <nav id="nav" hidden><div class="in">
   <button data-view="viagem"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h-1a1 1 0 0 1-1-1v-4l2-5h12l2 5v4a1 1 0 0 1-1 1h-1"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5M3 12h18"/></svg>Viagem</button>
   <button data-view="abast"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10"/><path d="M14 8h2a2 2 0 0 1 2 2v6a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg>Abastecer</button>
+  <button data-view="desp"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Despesas</button>
   <button data-view="vist"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12l2 2 4-4M9 17h6"/></svg>Vistoria<span class="dot" id="vdot" hidden></span></button>
   <button data-view="sit"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 16V10M12 16V5M17 16v-4"/></svg>Situação</button>
 </div></nav>
@@ -290,7 +295,7 @@ const Fila = {
   async todos(){ const r = await this.op('readonly', s => s.getAll()); return (r || []).concat(this._mem).sort((a, b) => a.k - b.k); },
   async del(k){ this._mem = this._mem.filter(i => i.k !== k); await this.op('readwrite', s => s.delete(k)); }
 };
-const NOMES_ENVIO = {iniciarUso: 'saída', encerrarUso: 'chegada', salvarAbastecimento: 'abastecimento', salvarVistoria: 'vistoria'};
+const NOMES_ENVIO = {iniciarUso: 'saída', encerrarUso: 'chegada', salvarAbastecimento: 'abastecimento', salvarVistoria: 'vistoria', salvarDespesa: 'despesa'};
 let sincronizando = false;
 async function sincronizar(){
   if (sincronizando) return {pendentes: (await Fila.todos()).length, erros: [], enviados: 0};
@@ -321,7 +326,7 @@ async function barraFila(n){
 function aplicarLocal(fn, d){
   const e = S.init.estado[d.placa]; if (!e) return;
   const up = v => { if (+v > e.ultimoKm) e.ultimoKm = +v; };
-  if (fn === 'iniciarUso'){ e.usoAberto = {id: d.id, motorista: d.auth.nome, destino: d.destino, saida: d.criadoEm, kmSaida: d.kmSaida}; up(d.kmSaida); }
+  if (fn === 'iniciarUso'){ e.usoAberto = {id: d.id, motorista: d.auth.nome, destino: (d.clientes || []).join(' + ') + (d.finalidade ? ' – ' + d.finalidade : ''), clientes: d.clientes || [], saida: d.criadoEm, kmSaida: d.kmSaida}; up(d.kmSaida); }
   if (fn === 'encerrarUso'){ e.usoAberto = null; up(d.kmChegada); }
   if (fn === 'salvarAbastecimento') up(d.km);
   if (fn === 'salvarVistoria'){ e.ultimaVistoria = d.criadoEm; e.ultimaVistoriaPor = d.auth.nome; up(d.km);
@@ -371,7 +376,7 @@ async function comprimir(file, max = 1400, q = 0.72){
 const S = {
   init: null, user: LS.get('frota-user', null), placa: LS.get('frota-placa', null),
   view: 'viagem', d: {}, vist: {}, shots: {}, tried: false, pinFor: null,
-  sub: {vist: 'novo', abast: 'novo'}, avFiltro: 'abertas', avList: [], avEdit: null, avDraft: {}, rel: {mes: null, placa: null}, relOut: null, vistList: []
+  sub: {vist: 'novo', abast: 'novo', desp: 'novo'}, cliMes: null, relCliOut: null, avFiltro: 'abertas', avList: [], avEdit: null, avDraft: {}, rel: {mes: null, placa: null}, relOut: null, vistList: []
 };
 const est = () => (S.init.estado[S.placa] || {});
 const veic = () => S.init.veiculos.find(v => v.placa === S.placa) || {};
@@ -400,6 +405,22 @@ const nbr = (n, d) => (+n || 0).toLocaleString('pt-BR', {minimumFractionDigits: 
 const fmtData = iso => { const d = new Date(iso); return d.toLocaleDateString('pt-BR') + ' · ' + hhmm(d); };
 const mesDe = iso => { const d = new Date(iso); return d.getFullYear() + '-' + n2(d.getMonth() + 1); };
 const mesAtual = () => mesDe(new Date());
+const INTERNO = () => S.init.interno || 'Interno / sem cliente';
+const isGestor = () => !!(S.user && (S.init.motoristas.find(m => m.nome === S.user.nome) || {}).gestor);
+const semAcento = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function clientesPicker(campo){
+  const sel = S.d[campo] || [], todos = (S.init.clientes || []).concat([INTERNO()]);
+  const busca = todos.length > 10 ? `<input type="text" class="inp cli-busca" data-clibusca="${campo}" placeholder="Buscar cliente…" autocomplete="off" aria-label="Buscar cliente">` : '';
+  return `${busca}<div class="chips cli-chips" id="cli-${campo}">${todos.map(c => `<button class="chip${c === INTERNO() ? ' interno' : ''}" data-cli="${campo}" data-v="${esc(c)}" aria-pressed="${sel.includes(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="hint" id="clisel-${campo}">${cliHint(sel)}</div>`;
+}
+const cliHint = sel => !sel.length ? 'Toque para escolher. Pode marcar mais de um.' : sel.length > 1 ? `<b>${sel.length} clientes:</b> ${esc(sel.join(' + '))} · custos divididos entre eles` : `<b>Selecionado:</b> ${esc(sel[0])}`;
+function mesOpts(selVal){
+  const o = [], d = new Date(); d.setDate(1);
+  for (let i = 0; i < 12; i++){ const v = d.getFullYear() + '-' + n2(d.getMonth() + 1);
+    o.push(`<option value="${v}"${v === selVal ? ' selected' : ''}>${d.toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'})}</option>`); d.setMonth(d.getMonth() - 1); }
+  return o.join('');
+}
 function stamp(){
   return `<div class="stamp"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
     <span>Registrado automaticamente: <b>${esc(S.user.nome)}</b> · data e hora do envio</span></div>`;
@@ -428,7 +449,7 @@ function vViagem(){
       <div class="card"><dl class="live">
         <dt>Status</dt><dd><span class="pulse"></span>Em uso</dd>
         <dt>Motorista</dt><dd>${esc(u.motorista)}</dd>
-        <dt>Destino</dt><dd>${esc(u.destino)}</dd>
+        <dt>Viagem</dt><dd>${esc(u.destino)}</dd>
         <dt>Saída</dt><dd>${quando(u.saida)} · ${km(u.kmSaida)}</dd></dl></div>
       <div class="card"><h2>Chegada</h2>
         <div class="f"><label for="kmChegada">Km no painel agora</label>
@@ -442,8 +463,9 @@ function vViagem(){
       <div class="f"><label for="kmSaida">Km no painel</label>
         <div class="suffix"><input type="text" id="kmSaida" data-f="kmSaida" inputmode="numeric" class="big" value="${S.d.kmSaida ?? (e.ultimoKm || '')}"><span>km</span></div>
         <div class="hint" id="kmHint">${kmHint()}</div></div>
-      <div class="f"><label for="destino">Destino / finalidade</label>
-        <input type="text" id="destino" data-f="destino" value="${val('destino')}" placeholder="Ex.: Codil – visita técnica" autocomplete="off"></div>
+      <div class="f"><span class="lbl">Cliente(s) da viagem</span>${clientesPicker('cliV')}</div>
+      <div class="f"><label for="finalidade">Finalidade <span class="opt">(opcional)</span></label>
+        <input type="text" id="finalidade" data-f="finalidade" value="${val('finalidade')}" placeholder="Ex.: visita técnica, auditoria, treinamento" autocomplete="off"></div>
       ${stamp()}
       <button class="btn" data-act="iniciar">Registrar saída</button></div>
     <p class="lead">Na volta, abra o app e toque em <b>Encerrar viagem</b> para registrar o km de chegada.</p>`;
@@ -498,6 +520,44 @@ function progresso(){
   const t = todosItens(), f = t.filter(i => S.vist[i] && S.vist[i].s).length;
   const fg = S.init.fotosGerais.filter(n => S.shots['g:' + n]).length;
   return `${f}/${t.length} itens · ${fg}/${S.init.fotosGerais.length} fotos`;
+}
+function vDesp(){
+  return subtabs('desp', ['novo', 'Nova despesa'], ['hist', 'Histórico']) + (S.sub.desp === 'hist' ? vDespHist() : vDespNova());
+}
+const DESP_PH = {'Pedágio': 'Ex.: praça de Eldorado do Sul', 'Alimentação': 'Ex.: almoço – 2 pessoas', 'Outros': 'Ex.: estacionamento'};
+function vDespNova(){
+  const u = est().usoAberto;
+  if (S.d.cliD === undefined) S.d.cliD = (u && u.clientes && u.clientes.length ? u.clientes : LS.get('frota-ult-cli', [])).slice();
+  const obrig = (S.init.comprovanteObrigatorio || []).includes(S.d.tipoD);
+  const tipos = S.init.tiposDespesa || ['Pedágio', 'Alimentação', 'Outros'];
+  return `<h1>Despesa de viagem</h1>
+    ${u ? `<div class="note info"><div>Viagem em andamento: <b>${esc(u.destino)}</b>. Os clientes dela já vêm marcados.</div></div>` : ''}
+    <div class="card">
+      <div class="f"><span class="lbl">Tipo</span><div class="chips">${tipos.map(t => `<button class="chip" data-chip="tipoD" data-v="${esc(t)}" aria-pressed="${S.d.tipoD === t}">${esc(t)}</button>`).join('')}</div></div>
+      <div class="f"><label for="valorD">Valor (R$)</label><input type="text" id="valorD" data-f="valorD" inputmode="decimal" class="big" value="${val('valorD')}" placeholder="0,00"></div>
+      <div class="f"><span class="lbl">Cliente(s)</span>${clientesPicker('cliD')}</div>
+      <div class="f"><label for="descD">Descrição <span class="opt">(opcional)</span></label><input type="text" id="descD" data-f="descD" value="${val('descD')}" placeholder="${DESP_PH[S.d.tipoD] || 'Ex.: almoço, praça de pedágio'}" autocomplete="off"></div>
+      <div class="f"><span class="lbl">Foto do comprovante <span class="opt">${obrig ? '(obrigatória)' : '(opcional)'}</span></span>${shot('despesa', 'Tirar foto do comprovante', 'wide')}</div>
+      ${stamp()}
+      <button class="btn" data-act="desp">Enviar despesa</button></div>`;
+}
+function vDespHist(){
+  return `<h1>Despesas · ${esc(nomeV(S.placa))}</h1><div id="sumDesp"></div>
+    <div class="card"><div class="hist" id="histDesp"><div class="empty">Carregando…</div></div></div>`;
+}
+async function carregarDesp(){
+  try {
+    const l = await api('getHistorico', {placa: S.placa, tipo: 'desp'}), el = $('#histDesp');
+    if (!el) return;
+    const m = l.filter(x => x.quando && mesDe(x.quando) === mesAtual()), soma = t => m.filter(x => x.tipo === t).reduce((s2, x) => s2 + (+x.valor || 0), 0);
+    $('#sumDesp').innerHTML = `<div class="sum">${(S.init.tiposDespesa || ['Pedágio', 'Alimentação', 'Outros']).map(t => `<div><b>${nbr(soma(t), 2)}</b><span>${esc(t)} no mês (R$)</span></div>`).join('')}</div>`;
+    el.innerHTML = l.length ? l.map(x => `<div class="hi"><div class="ic">${histIcon.desp}</div><div>
+      <div class="t">${esc(x.tipo)} · ${brl(+x.valor)}</div>
+      <div class="d">${quando(x.quando)} · ${esc(x.motorista)}</div>
+      <div class="d">${esc(String(x.clientes || '').split(/\s*;\s*/).join(' + '))}${x.descricao ? ' · ' + esc(x.descricao) : ''}</div>
+      ${x.comprovante ? `<a class="linkbtn" href="${esc(x.comprovante)}" target="_blank" rel="noopener">Ver comprovante</a>` : ''}</div></div>`).join('')
+      : '<div class="empty">Nenhuma despesa registrada para este carro.</div>';
+  } catch(e){ const el = $('#histDesp'); if (el) el.innerHTML = `<div class="empty">Não foi possível carregar: ${esc(e.message)}</div>`; }
 }
 function vVist(){
   const n = est().avariasAbertas || 0;
@@ -614,10 +674,16 @@ function vSit(){
       <p class="lead">PDF com resumo do mês (km rodados, empresas visitadas, problemas relatados) e os históricos de viagens e de abastecimentos.</p>
       <button class="btn" data-act="relatorio">Gerar relatório</button>
       <div id="relOut">${S.relOut ? relLink(S.relOut) : ''}</div></div>
+    ${isGestor() ? `<div class="sec">Custos por cliente</div>
+    <div class="card"><div class="f"><label for="cliMes">Mês</label><select id="cliMes" class="inp">${mesOpts(S.cliMes || mesAtual())}</select></div>
+      <p class="lead">PDF com combustível (rateado pelo km rodado), pedágios e alimentação de cada cliente. Visível só para gestores.</p>
+      <button class="btn" data-act="relclientes">Gerar PDF de custos</button>
+      <div id="relCliOut">${S.relCliOut ? relLink(S.relCliOut) : ''}</div></div>` : ''}
     <div class="sec">Histórico de viagens · ${esc(nomeV(S.placa))}</div>
     <div class="card"><div class="hist" id="hist"><div class="empty">Carregando…</div></div></div>`;
 }
 const histIcon = {
+  desp: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
   uso: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19 10 5h4l6 14M12 9v2M12 14v2"/></svg>',
   abast: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21V5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v16M4 21h11M5 10h9"/></svg>',
   vist: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="m9 12 2 2 4-4"/></svg>'
@@ -650,12 +716,13 @@ function render(){
     <span class="sp"></span><button class="who" data-act="sair" title="Trocar motorista">${esc(S.user.nome.split(' ')[0])} ▾</button>`;
   $('#nav').hidden = false;
   $('#vdot').hidden = !vistoriaVencida(est());
-  $('#view').innerHTML = ({viagem: vViagem, abast: vAbast, vist: vVist, sit: vSit})[S.view]();
+  $('#view').innerHTML = ({viagem: vViagem, abast: vAbast, desp: vDesp, vist: vVist, sit: vSit})[S.view]();
   document.querySelectorAll('#nav button').forEach(b => b.setAttribute('aria-current', b.dataset.view === S.view ? 'page' : 'false'));
   if (S.view === 'sit') carregarHist();
   if (S.view === 'vist' && S.sub.vist === 'hist') carregarVist();
   if (S.view === 'vist' && S.sub.vist === 'avar') carregarAvar();
   if (S.view === 'abast' && S.sub.abast === 'hist') carregarAbast();
+  if (S.view === 'desp' && S.sub.desp === 'hist') carregarDesp();
 }
 function ir(view){ S.view = view; S.tried = false; render(); window.scrollTo(0, 0); }
 
@@ -728,7 +795,16 @@ document.addEventListener('click', async ev => {
     if (m.temPin){ S.pinFor = m.nome; return render(); }
     return entrar(m.nome, '');
   }
-  if (t.dataset.chip){ S.d[t.dataset.chip] = t.dataset.v; t.parentNode.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === t)); return salvarRascunho(); }
+  if (t.dataset.chip){ S.d[t.dataset.chip] = t.dataset.v; t.parentNode.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === t));
+    if (t.dataset.chip === 'tipoD'){ const y = window.scrollY; render(); window.scrollTo(0, y); } return salvarRascunho(); }
+  if (t.dataset.cli){
+    const campo = t.dataset.cli, v = t.dataset.v; let sel = (S.d[campo] || []).slice();
+    if (sel.includes(v)) sel = sel.filter(x => x !== v);
+    else sel = v === INTERNO() ? [v] : sel.filter(x => x !== INTERNO()).concat(v);
+    S.d[campo] = sel;
+    document.querySelectorAll(`#cli-${campo} .chip`).forEach(c => c.setAttribute('aria-pressed', sel.includes(c.dataset.v)));
+    $('#clisel-' + campo).innerHTML = cliHint(sel); return salvarRascunho();
+  }
   if (t.dataset.st){
     const it = t.dataset.item, cur = S.vist[it] || {};
     S.vist[it] = Object.assign({}, cur, {s: cur.s === t.dataset.st ? null : t.dataset.st});
@@ -761,8 +837,23 @@ document.addEventListener('click', async ev => {
   if (a === 'iniciar'){
     const k = int(S.d.kmSaida ?? est().ultimoKm);
     if (!isFinite(k)) return toast('Informe o km do painel.', true);
-    if (!(S.d.destino || '').trim()) return toast('Informe o destino ou a finalidade.', true);
-    return enviar('iniciarUso', {kmSaida: k, destino: S.d.destino.trim()}, 'Registrando saída…', 'Saída registrada');
+    const clientes = S.d.cliV || [];
+    if (!clientes.length) return toast('Escolha o cliente da viagem.', true);
+    LS.set('frota-ult-cli', clientes);
+    return enviar('iniciarUso', {kmSaida: k, clientes, finalidade: (S.d.finalidade || '').trim()}, 'Registrando saída…', 'Saída registrada');
+  }
+  if (a === 'desp'){
+    const f = [], v = dec(S.d.valorD), obrig = (S.init.comprovanteObrigatorio || []).includes(S.d.tipoD);
+    if (!S.d.tipoD) f.push('tipo'); if (!(v > 0)) f.push('valor'); if (!(S.d.cliD || []).length) f.push('cliente');
+    if (obrig && !S.shots.despesa) f.push('foto do comprovante');
+    if (f.length){ S.tried = true; const y = window.scrollY; render(); window.scrollTo(0, y); return toast('Falta: ' + f.join(', ') + '.', true); }
+    return enviar('salvarDespesa', {tipo: S.d.tipoD, valor: v, clientes: S.d.cliD, descricao: (S.d.descD || '').trim(), foto: S.shots.despesa || null}, 'Enviando despesa…', 'Despesa registrada');
+  }
+  if (a === 'relclientes'){
+    t.disabled = true; t.textContent = 'Gerando relatório…'; $('#relCliOut').innerHTML = '';
+    try { S.relCliOut = await api('relatorioClientes', {auth: S.user, mes: S.cliMes || mesAtual()}); const o = $('#relCliOut'); if (o) o.innerHTML = relLink(S.relCliOut); toast('Relatório pronto. Toque em Abrir PDF.'); }
+    catch(e){ toast(e.message, true); }
+    t.disabled = false; t.textContent = 'Gerar PDF de custos'; return;
   }
   if (a === 'encerrar'){
     const u = est().usoAberto, k = int(S.d.kmChegada);
@@ -806,6 +897,11 @@ document.addEventListener('input', ev => {
     if (el.dataset.f === 'kmChegada'){ const r = int(el.value) - est().usoAberto.kmSaida; $('#rodados').textContent = isFinite(r) && r >= 0 ? 'Rodados nesta viagem: ' + km(r) : 'Digite o km que aparece no painel.'; }
     if (el.dataset.f === 'litros' || el.dataset.f === 'valor'){ const l = dec(S.d.litros), v = dec(S.d.valor); $('#porLitro').textContent = l > 0 && v > 0 ? brl(v / l) + ' por litro' : ''; }
   }
+  if (el.dataset.clibusca){
+    const q = semAcento(el.value.trim());
+    document.querySelectorAll(`#cli-${el.dataset.clibusca} .chip`).forEach(c => { c.hidden = !!q && !semAcento(c.dataset.v).includes(q) && c.getAttribute('aria-pressed') !== 'true'; });
+    return;
+  }
   if (el.dataset.avobs !== undefined){ S.avDraft.obs = el.value; return; }
   if (el.dataset.obs !== undefined){ const it = el.dataset.obs; S.vist[it] = Object.assign({}, S.vist[it], {obs: el.value}); }
   salvarRascunho();
@@ -813,6 +909,7 @@ document.addEventListener('input', ev => {
 
 document.addEventListener('change', async ev => {
   const el = ev.target;
+  if (el.id === 'cliMes'){ S.cliMes = el.value; S.relCliOut = null; const o = $('#relCliOut'); if (o) o.innerHTML = ''; return; }
   if (el.id === 'relMes' || el.id === 'relPlaca'){ S.rel[el.id === 'relMes' ? 'mes' : 'placa'] = el.value; S.relOut = null; const o = $('#relOut'); if (o) o.innerHTML = ''; return; }
   if (el.dataset.multi && el.files && el.files[0]){
     const key = el.dataset.multi, row = el.closest('.it');
@@ -846,17 +943,17 @@ async function entrar(nome, pin){
 const Demo = {
   _mem: null,
   db(){
-    let d = LS.get('frota-demo-v3', null) || this._mem;
+    let d = LS.get('frota-demo-v4', null) || this._mem;
     if (!d){ d = demoSeed(); this.save(d); }
     return d;
   },
-  save(d){ this._mem = d; LS.set('frota-demo-v3', d); },
-  getInit(){ const d = this.db(); return {demo: true, motoristas: d.mot.map(m => ({nome: m.nome, temPin: !!m.pin})), veiculos: d.vei, itens: DEMO_ITENS, fotosGerais: DEMO_FOTOS, diasVistoria: 7, estado: demoEstado(d)}; },
+  save(d){ this._mem = d; LS.set('frota-demo-v4', d); },
+  getInit(){ const d = this.db(); return {demo: true, clientes: DEMO_CLIENTES, interno: 'Interno / sem cliente', tiposDespesa: ['Pedágio', 'Alimentação', 'Outros'], comprovanteObrigatorio: ['Alimentação'], motoristas: d.mot.map(m => ({nome: m.nome, temPin: !!m.pin, gestor: !!m.gestor})), veiculos: d.vei, itens: DEMO_ITENS, fotosGerais: DEMO_FOTOS, diasVistoria: 7, estado: demoEstado(d)}; },
   auth(a){ const m = this.db().mot.find(x => x.nome === (a && a.nome)); if (!m) throw new Error('Motorista não cadastrado.'); if (m.pin && String(a.pin) !== m.pin) throw new Error('PIN incorreto. No exemplo, o PIN é 1234.'); return m.nome; },
   login(o){ return {ok: true, nome: this.auth(o)}; },
   iniciarUso(o){ const d = this.db(), m = this.auth(o.auth), now = new Date().toISOString();
     if (demoEstado(d)[o.placa].usoAberto) throw new Error('Este veículo já está em uso.');
-    d.usos.push({id: 'U' + Date.now(), placa: o.placa, saida: now, motorista: m, destino: o.destino, kmSaida: o.kmSaida, chegada: null, kmChegada: null});
+    d.usos.push({id: 'U' + Date.now(), placa: o.placa, saida: now, motorista: m, destino: (o.clientes || []).join(' + ') + (o.finalidade ? ' – ' + o.finalidade : ''), clientes: o.clientes || [], kmSaida: o.kmSaida, chegada: null, kmChegada: null});
     this.save(d); return {ok: true, quando: now, estado: demoEstado(d)}; },
   encerrarUso(o){ const d = this.db(), now = new Date().toISOString(); this.auth(o.auth);
     const u = d.usos.find(x => x.id === o.id); u.chegada = now; u.kmChegada = o.kmChegada;
@@ -870,6 +967,7 @@ const Demo = {
     x.forEach(e => d.avar.push({id: 'A' + Date.now() + e[0].length, idV: o.id, placa: o.placa, item: e[0], desc: e[1].obs, quando: now, motorista: m, status: 'Aberta', obs: ''}));
     this.save(d); return {ok: true, quando: now, estado: demoEstado(d)}; },
   getHistorico(o){ const d = this.db(), t = o.tipo || 'uso', desc = (a, b) => b.quando.localeCompare(a.quando);
+    if (t === 'desp') return (d.desp || []).filter(x => x.placa === o.placa).sort(desc);
     if (t === 'abast') return d.abast.filter(a => a.placa === o.placa).map(a => ({quando: a.quando, motorista: a.motorista, posto: a.posto, km: a.km, comb: a.comb, litros: a.litros, valor: a.valor, precoL: a.valor / a.litros, cheio: a.cheio})).sort(desc);
     if (t === 'vist') return d.vist.filter(v => v.placa === o.placa).sort((a, b) => a.quando.localeCompare(b.quando))
       .map((v, i) => ({id: v.id || ('V' + i), numero: i + 1, quando: v.quando, motorista: v.motorista, km: v.km, ok: v.ok, c: v.c, x: v.x, pdf: ''})).sort(desc);
@@ -884,10 +982,15 @@ const Demo = {
     if (!a) throw new Error('Avaria não encontrada.');
     if (o.situacao === 'Resolvida'){ if (!a.resolvidoEm) a.resolvidoEm = now; } else a.resolvidoEm = null;
     a.status = o.situacao; a.obs = o.obs; a.por = m; a.em = now; this.save(d); return {ok: true, estado: demoEstado(d)}; },
+  salvarDespesa(o){ const d = this.db(), m = this.auth(o.auth), now = new Date().toISOString(); d.desp = d.desp || [];
+    d.desp.push({placa: o.placa, quando: now, motorista: m, tipo: o.tipo, clientes: (o.clientes || []).join('; '), valor: o.valor, descricao: o.descricao, comprovante: ''});
+    this.save(d); return {ok: true, quando: now, estado: demoEstado(d)}; },
+  relatorioClientes(){ throw new Error(DEMO_PDF); },
   pdfVistoria(){ throw new Error(DEMO_PDF); },
   relatorioMensal(){ throw new Error(DEMO_PDF); }
 };
 const DEMO_PDF = 'No modo demonstração o PDF não é gerado. Ele funciona quando o config.js tem a URL do Google.';
+const DEMO_CLIENTES = ['Arrozagro', 'Codil', 'Coradini – Bagé', 'DeMello Alimentos', 'DJM', 'Pontarollo'];
 const DEMO_ITENS = [
   {grupo: 'Níveis e fluidos', itens: ['Óleo do motor', 'Água do radiador', 'Água do limpador de para-brisa', 'Fluido de freio']},
   {grupo: 'Pneus, luzes e segurança', itens: ['Pneus calibrados', 'Pneus sem desgaste / bolhas / cortes', 'Faróis e lanternas', 'Setas, luz de freio e ré', 'Buzina', 'Palhetas do limpador', 'Freios / freio de mão', 'Painel sem luz de alerta acesa']},
@@ -897,7 +1000,7 @@ const DEMO_FOTOS = ['Painel (km e luzes)', 'Frente', 'Traseira', 'Lateral esquer
 function demoSeed(){
   const h = (dd, hh, mm) => { const d = new Date(); d.setDate(d.getDate() - dd); d.setHours(hh, mm, 0, 0); return d.toISOString(); };
   return {
-    mot: [{nome: 'Vinícius'}, {nome: 'Carla Exemplo'}, {nome: 'Rafael Exemplo', pin: '1234'}],
+    mot: [{nome: 'Vinícius', gestor: true}, {nome: 'Carla Exemplo'}, {nome: 'Rafael Exemplo', pin: '1234'}],
     vei: [{placa: 'IZK4B21', modelo: 'Fiat Strada (exemplo)'}, {placa: 'JBX7C09', modelo: 'VW Gol (exemplo)'}],
     usos: [
       {id: 'U1', placa: 'IZK4B21', saida: h(3, 7, 40), motorista: 'Carla Exemplo', destino: 'Cliente A – auditoria interna', kmSaida: 48210, chegada: h(3, 18, 5), kmChegada: 48496},
@@ -916,7 +1019,7 @@ function demoEstado(d){
   const e = {};
   d.vei.forEach(v => e[v.placa] = {ultimoKm: 0, usoAberto: null, ultimaVistoria: null, ultimaVistoriaPor: '', avariasAbertas: 0});
   const up = (p, k) => { if (e[p] && +k > e[p].ultimoKm) e[p].ultimoKm = +k; };
-  d.usos.forEach(u => { up(u.placa, u.kmSaida); up(u.placa, u.kmChegada); if (!u.chegada) e[u.placa].usoAberto = {id: u.id, motorista: u.motorista, destino: u.destino, saida: u.saida, kmSaida: u.kmSaida}; });
+  d.usos.forEach(u => { up(u.placa, u.kmSaida); up(u.placa, u.kmChegada); if (!u.chegada) e[u.placa].usoAberto = {id: u.id, motorista: u.motorista, destino: u.destino, clientes: u.clientes || [], saida: u.saida, kmSaida: u.kmSaida}; });
   d.abast.forEach(a => up(a.placa, a.km));
   d.vist.forEach(v => { up(v.placa, v.km); if (!e[v.placa].ultimaVistoria || v.quando > e[v.placa].ultimaVistoria){ e[v.placa].ultimaVistoria = v.quando; e[v.placa].ultimaVistoriaPor = v.motorista; } });
   d.avar.forEach(a => { if (a.status !== 'Resolvida' && e[a.placa]) e[a.placa].avariasAbertas++; });
