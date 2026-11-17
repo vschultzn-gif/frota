@@ -526,7 +526,8 @@ function vDesp(){
 }
 const DESP_PH = {'Pedágio': 'Ex.: praça de Eldorado do Sul', 'Alimentação': 'Ex.: almoço – 2 pessoas', 'Outros': 'Ex.: estacionamento'};
 function vDespNova(){
-  const u = est().usoAberto;
+  const pl = Object.keys(S.init.estado).find(k => (S.init.estado[k].usoAberto || {}).motorista === S.user.nome);
+  const u = pl ? S.init.estado[pl].usoAberto : null;
   if (S.d.cliD === undefined) S.d.cliD = (u && u.clientes && u.clientes.length ? u.clientes : LS.get('frota-ult-cli', [])).slice();
   const obrig = (S.init.comprovanteObrigatorio || []).includes(S.d.tipoD);
   const tipos = S.init.tiposDespesa || ['Pedágio', 'Alimentação', 'Outros'];
@@ -542,21 +543,21 @@ function vDespNova(){
       <button class="btn" data-act="desp">Enviar despesa</button></div>`;
 }
 function vDespHist(){
-  return `<h1>Despesas · ${esc(nomeV(S.placa))}</h1><div id="sumDesp"></div>
+  return `<h1>Despesas</h1><div id="sumDesp"></div>
     <div class="card"><div class="hist" id="histDesp"><div class="empty">Carregando…</div></div></div>`;
 }
 async function carregarDesp(){
   try {
-    const l = await api('getHistorico', {placa: S.placa, tipo: 'desp'}), el = $('#histDesp');
+    const l = await api('getHistorico', {tipo: 'desp'}), el = $('#histDesp');
     if (!el) return;
     const m = l.filter(x => x.quando && mesDe(x.quando) === mesAtual()), soma = t => m.filter(x => x.tipo === t).reduce((s2, x) => s2 + (+x.valor || 0), 0);
-    $('#sumDesp').innerHTML = `<div class="sum">${(S.init.tiposDespesa || ['Pedágio', 'Alimentação', 'Outros']).map(t => `<div><b>${nbr(soma(t), 2)}</b><span>${esc(t)} no mês (R$)</span></div>`).join('')}</div>`;
+    $('#sumDesp').innerHTML = `<div class="sum">${(S.init.tiposDespesa || ['Pedágio', 'Alimentação', 'Outros']).map(t => `<div><b>${nbr(soma(t), 2)}</b><span>${esc(t)} no mês, todos (R$)</span></div>`).join('')}</div>`;
     el.innerHTML = l.length ? l.map(x => `<div class="hi"><div class="ic">${histIcon.desp}</div><div>
       <div class="t">${esc(x.tipo)} · ${brl(+x.valor)}</div>
       <div class="d">${quando(x.quando)} · ${esc(x.motorista)}</div>
       <div class="d">${esc(String(x.clientes || '').split(/\s*;\s*/).join(' + '))}${x.descricao ? ' · ' + esc(x.descricao) : ''}</div>
       ${x.comprovante ? `<a class="linkbtn" href="${esc(x.comprovante)}" target="_blank" rel="noopener">Ver comprovante</a>` : ''}</div></div>`).join('')
-      : '<div class="empty">Nenhuma despesa registrada para este carro.</div>';
+      : '<div class="empty">Nenhuma despesa registrada.</div>';
   } catch(e){ const el = $('#histDesp'); if (el) el.innerHTML = `<div class="empty">Não foi possível carregar: ${esc(e.message)}</div>`; }
 }
 function vVist(){
@@ -967,7 +968,7 @@ const Demo = {
     x.forEach(e => d.avar.push({id: 'A' + Date.now() + e[0].length, idV: o.id, placa: o.placa, item: e[0], desc: e[1].obs, quando: now, motorista: m, status: 'Aberta', obs: ''}));
     this.save(d); return {ok: true, quando: now, estado: demoEstado(d)}; },
   getHistorico(o){ const d = this.db(), t = o.tipo || 'uso', desc = (a, b) => b.quando.localeCompare(a.quando);
-    if (t === 'desp') return (d.desp || []).filter(x => x.placa === o.placa).sort(desc);
+    if (t === 'desp') return (d.desp || []).slice().sort(desc);
     if (t === 'abast') return d.abast.filter(a => a.placa === o.placa).map(a => ({quando: a.quando, motorista: a.motorista, posto: a.posto, km: a.km, comb: a.comb, litros: a.litros, valor: a.valor, precoL: a.valor / a.litros, cheio: a.cheio})).sort(desc);
     if (t === 'vist') return d.vist.filter(v => v.placa === o.placa).sort((a, b) => a.quando.localeCompare(b.quando))
       .map((v, i) => ({id: v.id || ('V' + i), numero: i + 1, quando: v.quando, motorista: v.motorista, km: v.km, ok: v.ok, c: v.c, x: v.x, pdf: ''})).sort(desc);
